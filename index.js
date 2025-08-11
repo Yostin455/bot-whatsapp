@@ -3,6 +3,7 @@
 /* ===== IMPORTS ===== */
 const fs = require("fs");
 const path = require("path");
+const QRCode = require('qrcode');
 const {
   default: makeWASocket,
   useMultiFileAuthState
@@ -178,31 +179,32 @@ async function start() {
 const qrcode = require("qrcode-terminal");
 const QRCode = require("qrcode"); // <- nuevo
 
-sock.ev.on("connection.update", async (update) => {
+sock.ev.on('connection.update', async (update) => {
   const { qr, connection, lastDisconnect } = update;
 
   if (qr) {
     console.log("== Escanea este QR ==");
-    qrcode.generate(qr, { small: true });
+    // URL clickeable (más cómodo en Railway)
+    const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=' + encodeURIComponent(qr);
+    console.log('QR en imagen:', qrUrl);
 
-    // LINK CLICKEABLE (perfecto en Railway)
-    const qrLink = "https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=" + encodeURIComponent(qr);
-    console.log("🔗 QR en imagen:", qrLink);
-
-    // (Opciona) guardar PNG si corres local
+    // Guardar PNG localmente (se verá en tu máquina; en Railway es efímero)
     try {
-      await QRCode.toFile("./data/medios/qr-login.png", qr, { width: 320, margin: 1 });
-      console.log("🖼️ Guardado: ./data/medios/qr-login.png");
+      await QRCode.toFile(filePath, qr, { width: 320, margin: 1 };
+      console.log('Guardado:', filePath);
     } catch (e) {
-      console.log("No pude guardar PNG local:", e.message);
+      console.error('No pude guardar el PNG:', e);
     }
   }
 
-  if (connection === "open") console.log("✅ Conectado a WhatsApp");
-  if (connection === "close") {
-    const code = lastDisconnect?.error?.output?.statusCode || "";
-    const reason = lastDisconnect?.error?.message || "";
-    cnsole.log(`❌ Conexión cerrada. Código: ${code} | Motivo: ${reason}`);
+  if (connection === 'open') {
+    console.log('✅ Conectado a WhatsApp');
+  }
+
+  if (connection === 'close') {
+    const code = lastDisconnect?.error?.output?.statusCode || '';
+    const reason = lastDisconnect?.error?.message || '';
+    console.log(`❌ Conexión cerrada. Código: ${code} | Motivo: ${reason}`);
   }
 });
   sock.ev.on("creds.update", saveCreds);
@@ -253,6 +255,8 @@ if (/^3(\b|[.)])/.test(t)) {
       await avisarAdmins(sock, jid, "Quiere hablar con un vendedor");
       return;
     }
+const path = require('path');
+const filePath = path.join(__dirname, 'qr-login.png');
 
     // Subopciones (números)
     if (/^5(\b|[.)])/.test(t)) {
