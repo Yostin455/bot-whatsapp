@@ -176,50 +176,33 @@ async function start() {
   });
 
 const qrcode = require("qrcode-terminal");
+const QRCode = require("qrcode"); // <- nuevo
 
-sock.ev.on("connection.update", (update) => {
+sock.ev.on("connection.update", async (update) => {
   const { qr, connection, lastDisconnect } = update;
 
   if (qr) {
-    console.log("\n=== Escanea este QR ===");
+    console.log("== Escanea este QR ==");
     qrcode.generate(qr, { small: true });
-  }
 
-  if (connection === "open") {
-    console.log("✅ Conectado a WhatsApp");
-  }
+    // LINK CLICKEABLE (perfecto en Railway)
+    const qrLink = "https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=" + encodeURIComponent(qr);
+    console.log("🔗 QR en imagen:", qrLink);
 
-  if (connection === "close") {
-    const code =
-      lastDisconnect?.error?.output?.statusCode ||
-      lastDisconnect?.error?.data?.statusCode ||
-      lastDisconnect?.error?.staus ||
-      "";
-    const reason =
-      lastDisconnect?.error?.message ||
-      lastDisconnect?.error?.toString() ||
-      "Desconocido";
-
-    console.log(`❌ Conexión cerrada. Código: ${code} | Motivo: ${reason}`);
-
-    // Si la sesión quedó inválida, hay que borrar ./auth y escanear de nuevo
-    const shouldLogout =
-      reason.toLowerCase().includes("logged out") ||
-      reason.toLowerCase().includes("bad session") ||
-      code === 401;
-
-    // Si fue reemplazada por otra instancia (Railway encenddo, por ejemplo)
-    const replaced =
-      reason.toLowerCase().includes("connection replaced") || code === 409;
-
-    if (shouldLogout) {
-      console.log("➡️ Sesión inválida. Borra la carpeta ./auth y escanea de nuevo.");
-    } else if (replaced) {
-      console.log("➡️ La conexión fue reemplazada. Asegúrate de tener SOLO una instancia.");
-    } else {
-      console.log("🔁 Reintentando conexión en 5s…");
-      setTimeout(start, 5000); // reintenta
+    // (Opciona) guardar PNG si corres local
+    try {
+      await QRCode.toFile("./data/medios/qr-login.png", qr, { width: 320, margin: 1 });
+      console.log("🖼️ Guardado: ./data/medios/qr-login.png");
+    } catch (e) {
+      console.log("No pude guardar PNG local:", e.message);
     }
+  }
+
+  if (connection === "open") console.log("✅ Conectado a WhatsApp");
+  if (connection === "close") {
+    const code = lastDisconnect?.error?.output?.statusCode || "";
+    const reason = lastDisconnect?.error?.message || "";
+    cnsole.log(`❌ Conexión cerrada. Código: ${code} | Motivo: ${reason}`);
   }
 });
   sock.ev.on("creds.update", saveCreds);
