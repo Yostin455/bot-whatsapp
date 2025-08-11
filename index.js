@@ -52,52 +52,51 @@ Tengo cosas que podrían tentart… ¿quieres que te las muestre?
 2. 💎 Qué es ChatGPT PLUS y por qué deberías comprarlo.
 3. 🤝 Conectar con un vendedor que te atienda enseguida.`;
 
-const TEXTO_OP1 = `Mmm… mira lo que tengo para ti, creo que te va a gustar…
+// ===== Opción 1: precios/planes (ahora muestra 5 y 6) =====
+const TEXTO_OP1 = `
+Mmm… mira lo que tengo para ti, creo que te va a gustar…
 
-📦 *Planes Compartidos* (para que me disfrutes con alguien más)
+📦 *Planes Compartidos*
 🔄 *1 dispositivo:*
-📅 1 mes — 35 Bs
-📅 2 meses — 60 Bs
-📅 6 meses — 169 Bs
-📅 1 año — 329 Bs
+• 1 mes — 35 Bs
+• 2 meses — 60 Bs
+• 6 meses — 169 Bs
+• 1 año — 329 Bs
 
 🔄 *2 dispositivos:*
-📅 1 mes — 60 Bs
-📅 2 meses — 109 Bs
-📅 6 meses — 309 Bs
+• 1 mes — 60 Bs
+• 2 meses — 109 Bs
+• 6 meses — 309 Bs
 
-� *Planes Individuales* (solo tú y yo… sin interrupciones)
-📅 1 mes — 149 Bs
-📅 2 meses — 309 Bs
-📅 6 meses — 939 Bs
-📅 1 año — 1870 Bs
+👤 *Planes Individuales*
+• 1 mes — 139 Bs
+• 2 meses — 299 Bs
+• 6 meses — 929 Bs
+• 1 año — 1879 Bs
+`;
 
-Opciones:
-• escribe: *plan compartido*
-• escribe: *plan individual*
-• escribe: *ir a pagar*  (o *4*)`;
+// ===== Detalle Plan Compartido =====
+const TEXTO_COMPARTIDO = `
+El *plan compartido* es como invitar a unos amigos a usar la misma llave para entrar a un lugar increíble.
 
-const TEXTO_COMPARTIDO = `El *plan compartido* es como invitar a unos amigos a usar la misma llave para entrar a un lugar increíble…
+Tú tendrás tu propio acceso y podrás usar todas las funciones premium, pero recuerda que *otros también tienen acceso* a esa misma cuenta, así que pueden ver o borrar el historial.
 
-En este caso, esa llave es una cuenta de *ChatGPT Plus* que compartimos entre varias personas.
+Es una opción *más económica*, ideal si quieres disfrutar de todo sin pagar el precio de una cuenta individual.
 
-Tú tendrás tu propio acceso, podrás usa todas las funciones premium y crear lo que quieras…
-pero recuerda que *otros también tienen acceso* a esa misma cuenta, así que pueden ver el historial de conversaciones o incluso borrarlo.
+¿Qué quieres hacer ahora?
+• Escribe *6* ara ver el Plan Individual
+• Escribe *ir a pagar* o *4* para continuar al pago
+`;
+// ===== Detalle Plan Individual =====
+const TEXTO_INDIVIDUAL = `
+El *plan individual* es *solo para ti*.
 
-Es una opción *más económica*, ideal si lo que quieres es disfrutar de ChatGPT Plus sin pagar el precio completo de una cuenta individual.
+Tendrás un espacio *completamente privado* donde nadie más puede entrar ni ver tus chats. Perfecto para trabajar, crear y guardar todo sin interrupciones.
 
-¿Quieres que te cuente ahora *qué es el plan individual*… o prefieres que *vayamos directo a pagar* (escribe *4*)?`;
-
-const TEXTO_INDIVIDUAL = `El *plan individual* es… *solo pra ti*.
-
-Una cuenta de *ChatGPT Plus completamente tuya*, donde nadie más podrá entrar, ni ver, ni modificar tus chats.
-
-Tendrás tu *propio espacio privado* para trabajar, crear y guardar todo lo que quieras, sin preocuparte por interrupciones.
-
-Es como tenerme a mí, *Samantha*, como tu asistente personal… pero sin compartirte con nadie más.
-
-¿Quieres que te diga los *precios* o prefieres *ir a pagar* ahora mismo (escribe *4*)?`;
-
+¿Qué quieres hacer ahora?
+• Escribe *5* para ver el Plan Compartido
+• Escribe *ir a pagar* o *4* para continuar al pago
+`;
 const TEXTO_OP2 = `Soy yo otra vez… *Samantha*.
 
 Veo que quieres saber lo ue puedo hacer contigo… y para ti… con *ChatGPT Plus*.
@@ -112,7 +111,7 @@ Veo que quieres saber lo ue puedo hacer contigo… y para ti… con *ChatGPT Plu
 🌍🧠 Traduzco, redacto, resumo, organizo…
 🎬✨ Incluso videos automáticos con SORA.
 
-Si ya te convencí, escrib *4* o *ir a pagar*.`;
+Si ya te convencí*.`;
 
 const TEXTO_PAGO = `¡Perfecto! Estamos a un paso de que tengamos *nuestra primera cita de trabajo* juntos.
 
@@ -176,6 +175,53 @@ async function start() {
     browser: ["BotVendedor", "Chrome", "1.0"]
   });
 
+const qrcode = require("qrcode-terminal");
+
+sock.ev.on("connection.update", (update) => {
+  const { qr, connection, lastDisconnect } = update;
+
+  if (qr) {
+    console.log("\n=== Escanea este QR ===");
+    qrcode.generate(qr, { small: true });
+  }
+
+  if (connection === "open") {
+    console.log("✅ Conectado a WhatsApp");
+  }
+
+  if (connection === "close") {
+    const code =
+      lastDisconnect?.error?.output?.statusCode ||
+      lastDisconnect?.error?.data?.statusCode ||
+      lastDisconnect?.error?.staus ||
+      "";
+    const reason =
+      lastDisconnect?.error?.message ||
+      lastDisconnect?.error?.toString() ||
+      "Desconocido";
+
+    console.log(`❌ Conexión cerrada. Código: ${code} | Motivo: ${reason}`);
+
+    // Si la sesión quedó inválida, hay que borrar ./auth y escanear de nuevo
+    const shouldLogout =
+      reason.toLowerCase().includes("logged out") ||
+      reason.toLowerCase().includes("bad session") ||
+      code === 401;
+
+    // Si fue reemplazada por otra instancia (Railway encenddo, por ejemplo)
+    const replaced =
+      reason.toLowerCase().includes("connection replaced") || code === 409;
+
+    if (shouldLogout) {
+      console.log("➡️ Sesión inválida. Borra la carpeta ./auth y escanea de nuevo.");
+    } else if (replaced) {
+      console.log("➡️ La conexión fue reemplazada. Asegúrate de tener SOLO una instancia.");
+    } else {
+      console.log("🔁 Reintentando conexión en 5s…");
+      setTimeout(start, 5000); // reintenta
+    }
+  }
+});
   sock.ev.on("creds.update", saveCreds);
 
  sock.ev.on("messages.upsert", async ({ messages }) => {
@@ -206,27 +252,75 @@ async function start() {
   return;
 }
 
-      // 1 / 2 / 3
-      if (/^1(\b|[.)])/.test(t)) { await sendText(sock, jid, TEXTO_OP1); return; }
-      if (/^2(\b|[.)])/.test(t)) { await sendText(sock, jid, TEXTO_OP2); return; }
-      if (/^3(\b|[.)])/.test(t)) {
-        await sendText(sock, jid, "En un mometo te atenderá un vendedor.");
-        await avisarAdmins(sock, jid, "Quiere hablar con un vendedor");
-        return;
-      }
+     // 1 / 2 / 3
+if (/^1(\b|[.)])$/.test(t)) {
+  await sendText(sock, jid, TEXTO_OP1);
+  // Sugerencia de navegación
+  await sendText(sock, jid, "Puedes escribir: 5 (Plan Compartido) • 6 (Plan Individual) • 4 (Pagar) • 7 (Volver al menú)");
+  return;
+}
+if (/^2(\b|[.)])$/.test(t)) {
+  await sendText(sock, jid, TEXTO_OP2);
+  // Sugerencia de navegación
+  await sendText(sock, jid, "Puedes escribir: 4 (Pagar) • 7 (Volver al menú)");
+  return;
+}
+if (/^3(\b|[.)])/.test(t)) {
+      await sendText(sock, jid, "En un momento te atenderá un vendedor.");
+      await avisarAdmins(sock, jid, "Quiere hablar con un vendedor");
+      return;
+    }
 
-      // Subopciones de la 1
-      if (t.includes("plan compartido")) { await sendText(sock, jid, TEXTO_COMPARTIDO); return; }
-      if (t.includes("plan individual")) { await sendText(sock, jid, TEXTO_INDIVIDUAL); return; }
+    // Subopciones (números)
+    if (/^5(\b|[.)])/.test(t)) {
+      await sendText(sock, jid, TEXTO_COMPARTIDO);
+      await sendText(
+        sock,
+        jid,
+        "¿Qué quieres hacer ahora?\n" +
+        "• Escribe *6* para ver el Plan Individual.\n" +
+        "• Escribe *ir a pagar* o *4* para continuar alpago.\n" +
+        "• Escribe *7* para volver al menú."
+      );
+      return;
+    }
 
-      // Ir a pagar
-      if (t.includes("ir a pagar") || t === "pagar" || /^4(\b|[.)])/.test(t)) {
-        await sendImage(sock, jid, IMG_QR, TEXTO_PAGO);        await avisarAdmins(sock, jid, "Fue a pagar");
-        return;
-      }
+    if (/^6(\b|[.)])/.test(t)) {
+      await sendText(sock, jid, TEXTO_INDIVIDUAL);
+      await sendText(
+        sock,
+        jid,
+        "¿Qué quieres hacer ahora?\n" +
+        "• Escribe *5* para ver el Plan Compartido.\n" +
+        "• Escribe *ir a pagar* o *4* para continuar al pago.\n" +
+        "• Escribe *7* para volver al menú."
+      );
+      return;
+    }
 
-      // Fallback
-      await enviarSaludo(sock, jid);
+    // === Ir a pagar (4) ===
+    if (
+      t ==="4" ||                          // "4"
+      /^4(\b|[.)])$/.test(t) ||             // "4." o "4)"
+      t.replace(/\s/g, "") === "4" ||       // "  4  "
+      t.includes("ir a pagar") ||           // "ir a pagar"
+      t === "pagar"                         // "pagar"
+    ) {
+      await sendImage(sock, jid, IMG_QR, TEXTO_PAGO);
+      await avisarAdmins(sock, jid, "Fue a pagar");
+      return;
+    }
+
+    // === Volver al menú (7) ===
+    // Acepta: "7", "7.", "7)", "*7*", con o sin espacios
+    if (/^[\s\]*7[\s\*]*[.)]?\s*$/.test(texto || "")) {
+      await enviarSaludo(sock, jid); // Menú con imagen
+      // Si prefieres solo texto: // await sendText(sock, jid, SALUDO);
+      return;
+    }
+
+    // Fallback (si no coincide nada)
+    await enviarSaludo(sock, jid);
     } catch (e) {
       console.error("upsert error:", e);
     }
