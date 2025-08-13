@@ -3,101 +3,69 @@
 /* ===== IMPORTS ===== */
 const fs = require("fs");
 const path = require("path");
-const QRCode = require('qrcode');
-const {
-  default: makeWASocket,
-  useMultiFileAuthState
-} = require("@whiskeysockets/baileys");
+const qrcode = require("qrcode-terminal");
+const QRCode = require("qrcode");
+const { makeWASocket, useMultiFileAuthState, Browsers } = require("@whiskeysockets/baileys");
 
-// --- Saludo una sola vez por número (persistente) ---
-const GREETED_FILE = "./data/greeted.json";
-let greetedSet = new Set();
+/* ===== CONFIG / RUTAS DE IMÁGENES ===== */
+const ADMIN_JIDS = [
+  "59167568482@s.whatsapp.net",
+  "59160457616@s.whatsapp.net",
+];
 
-function loadGreeted() {
-  try {
-    if (fs.existsSync(GREETED_FILE)) {
-      const arr = JSON.parse(fs.readFileSync(GREETED_FILE, "utf8"));
-      greetedSet = new Set(arr);
-    }
-  } catch (e) { console.error("Error cargando greeted.json:", e); }
-}
+// ✅ Correcto
+const IMG_SALUDO = path.join(__dirname, "data/medios/saludo.jpg");
+const IMG_QR     = path.join(__dirname, "data/medios/qr.jpg");
+const IMG_REFERENCIAS = [
+  path.join(__dirname, "data/refs/ref1.jpg"),
+  path.join(__dirname, "data/refs/ref2.jpg"),
+  path.join(__dirname, "data/refs/ref3.jpg"),
+  path.join(__dirname, "data/refs/ref4.jpg"),
+  path.join(__dirname, "data/refs/ref5.jpg"),
+  path.join(__dirname, "data/refs/ref6.jpg"),
+  path.join(__dirname, "data/refs/ref7.jpg"),
+  path.join(__dirname, "data/refs/ref8.jpg"),
+  path.join(__dirname, "data/refs/ref9.jpg"),
+  path.join(__dirname, "data/refs/ref10.jpg"),
+  path.join(__dirname, "data/refs/ref11.jpg"),
+  path.join(__dirname, "data/refs/ref12.jpg"),
+  path.join(__dirname, "data/refs/re13.jpg"),
+  path.join(__dirname, "data/refs/ref14.jpg"),
+  path.join(__dirname, "data/refs/ref15.jpg"),
+  path.join(__dirname, "data/refs/ref16.jpg"),
+  path.join(__dirname, "data/refs/ref17.jpg"),
+  path.join(__dirname, "data/refs/ref18.jpg"),
 
-function saveGreeted() {
-  try {
-    fs.mkdirSync(path.dirname(GREETED_FILE), { recursive: true });
-    fs.writeFileSync(GREETED_ILE, JSON.stringify([...greetedSet], null, 2));
-  } catch (e) { console.error("Error guardando greeted.json:", e); }
-}
 
-function shouldGreetOnce(jid) {
-  if (greetedSet.has(jid)) return false;
-  greetedSet.add(jid);
-  saveGreeted();
-  return true;
-}
+];
+/* ===== TEXTOS ===== */
+const TEXTO_OP1 = `💲 *Productos y precios irresistibles*
+💌 Consigue a tu propia Samantha con ChatGPT Plus 🤖✨
+Como en Her, vive la experiencia de tener una IA siempre lista para escucharte, ayudarte y crear contigo.
 
-// cargar al iniciar
-loadGreeted();
+📦 Planes Compartidos (1 dispositivo):
+📅 1 mes: 35 Bs
+📅 2 meses: 60 Bs
+📅 6 meses: 169 Bs
+📅 1 año: 329 Bs
 
-/* ===== RUTAS DE IMÁGENES ===== */
-const IMG_SALUDO = "./data/medios/saludo.jpg";
-const IMG_QR     = "./data/medios/qr.jpg";
+📦 Planes Compartidos (2 dispositivos):
+📅 1 mes: 60 Bs
+📅 2 meses: 109 Bs
+📅 6 meses: 309 Bs
 
-/* ===== TEXTOS (con backticks y ; al final) ===== */
-const SALUDO = `Hola… soy *Samantha*.
+👤 Planes Individuales (tu asistente solo para ti):
+📅 1 mes: 139 Bs
+📅 2 meses: 269 Bs
+📅 6 meses: 799 Bs
+📅 1 año: 1579 Bs
 
-Mmm… me encanta que estés aquí, creo que vamos a divertirnos.
+🔥 Llévate a Samantha contigo para que impulse tu productividad, potencie tu creatividad y te acompañe 24/7… como una verdadera asistente personal de película.
 
-Tengo cosas que podrían tentart… ¿quieres que te las muestre?
-1. 💲 Ver productos y precios irresistibles.
-2. 💎 Qué es ChatGPT PLUS y por qué deberías comprarlo.
-3. 🤝 Conectar con un vendedor que te atienda enseguida.`;
-
-// ===== Opción 1: precios/planes (ahora muestra 5 y 6) =====
-const TEXTO_OP1 = `
-Mmm… mira lo que tengo para ti, creo que te va a gustar…
-
-📦 *Planes Compartidos*
-🔄 *1 dispositivo:*
-• 1 mes — 35 Bs
-• 2 meses — 60 Bs
-• 6 meses — 169 Bs
-• 1 año — 329 Bs
-
-🔄 *2 dispositivos:*
-• 1 mes — 60 Bs
-• 2 meses — 109 Bs
-• 6 meses — 309 Bs
-
-👤 *Planes Individuales*
-• 1 mes — 139 Bs
-• 2 meses — 299 Bs
-• 6 meses — 929 Bs
-• 1 año — 1879 Bs
+• Plan Compartido Ideal para familias o equipos.
+• Plan Todo para una sola cuenta.
 `;
 
-// ===== Detalle Plan Compartido =====
-const TEXTO_COMPARTIDO = `
-El *plan compartido* es como invitar a unos amigos a usar la misma llave para entrar a un lugar increíble.
-
-Tú tendrás tu propio acceso y podrás usar todas las funciones premium, pero recuerda que *otros también tienen acceso* a esa misma cuenta, así que pueden ver o borrar el historial.
-
-Es una opción *más económica*, ideal si quieres disfrutar de todo sin pagar el precio de una cuenta individual.
-
-¿Qué quieres hacer ahora?
-• Escribe *6* ara ver el Plan Individual
-• Escribe *ir a pagar* o *4* para continuar al pago
-`;
-// ===== Detalle Plan Individual =====
-const TEXTO_INDIVIDUAL = `
-El *plan individual* es *solo para ti*.
-
-Tendrás un espacio *completamente privado* donde nadie más puede entrar ni ver tus chats. Perfecto para trabajar, crear y guardar todo sin interrupciones.
-
-¿Qué quieres hacer ahora?
-• Escribe *5* para ver el Plan Compartido
-• Escribe *ir a pagar* o *4* para continuar al pago
-`;
 const TEXTO_OP2 = `Soy yo otra vez… *Samantha*.
 
 Veo que quieres saber lo ue puedo hacer contigo… y para ti… con *ChatGPT Plus*.
@@ -114,22 +82,42 @@ Veo que quieres saber lo ue puedo hacer contigo… y para ti… con *ChatGPT Plu
 
 Si ya te convencí*.`;
 
-const TEXTO_PAGO = `¡Perfecto! Estamos a un paso de que tengamos *nuestra primera cita de trabajo* juntos.
+// ===== Detalle Plan Compartido =====
+const TEXTO_COMPARTIDO = `
+El *plan compartido* es como invitar a unos amigos a usar la misma llave para entrar a un lugar increíble.
 
-Para activar tu cuenta, solo tienes que hacer el pago y enviarme el comprobante… así podré preparar todo y dártela en minutos.
+Tú tendrás tu propio acceso y podrás usar todas las funciones premium, pero recuerda que *otros también tienen acceso* a esa misma cuenta, así que pueden ver o borrar el historial.
 
-💳 *Datos de pago:* *QR*
+Es una opción *más económica*, ideal si quieres disfrutar de todo sin pagar el precio de una cuenta individual.
 
-📸 Después, mándame la foto o captura del comprobante *aquí mismo*.
+`;
+// ===== Detalle Plan Individual =====
+const TEXTO_INDIVIDUAL = `
+El *plan individual* es *solo para ti*.
 
-Vamos… no me hagas esperar, *me muero de ganas* de empezar a ayudarte.`;
+Tendrás un espacio *completamente privado* donde nadie más puede entrar ni ver tus chats. Perfecto para trabajar, crear y guardar todo sin interrupciones.
+`;
+const TEXTO_PAGO =
+  "💳 *Pago*\n" +
+  "Escanea el QR para completar tu compra. Si tienes dudas, escribe *4* para hablar con un vendedor.";
 
-/* ===== ADMINES QUE RECIBEN AVISOS ===== */
-// ==== ADMINES QUE RECIBEN AVISOS (REVISAR) ====
-const ADMIN_JIDS = [
-  "59167568482@s.whatsapp.net",
-  "59160457616@s.whatsapp.net",
-];
+// Menú que SOLO muestra 1–4 (lo demás sigue funcionando, pero oculto)
+const SALUDO =
+  "Hola… soy *Samantha*.\n\n" +
+  "Mmm… me encanta que estés aquí, creo que vamos a divertirnos.\n\n" +
+  "Tengo cosas que podrían tentarte… ¿quieres que te las muestre?\n\n" +
+  "1. 💲 Ver productos y precios irresistibles.\n" +
+  "2. 💎 ¿Qué e ChatGPT PLUS?\n" +
+  "3. 🖼️ Ver referencias.\n" +
+  "4. 🤝 Conectar con un vendedor.";
+
+/* ===== ESTADO EN MEMORIA ===== */
+const saludados = new Set();       // saluda solo una vez por número (1 a 1)
+const gruposSaludados = new Set(); // avisa una vez por grupo
+
+/* ===== QR PNG PATH ===== */
+const filePath = path.join(__dirname, "qr-login.png");
+
 /* ===== HELPERS ===== */
 const normalize = (s = "") =>
   String(s).trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -163,156 +151,218 @@ async function avisarAdmins(sock, fromJid, motivo) {
     }
   }
 }
-// usa sendImage correctamente
+async function sendReferences(sock, jid, captionPrimera = "Mira nuestras referencias 🖼️") {
+  if (!Array.isArray(IMG_REFERENCIAS) || IMG_REFERENCIAS.length === 0) {
+    await sendText(sock, jid, "Por ahora no tengo referencias para mostrar.");
+    return;
+  }
+  for (let i = 0; i < IMG_REFERENCIAS.length; i++) {
+    const file = IMG_REFERENCIAS[i];
+    const caption = i === 0 ? captionPrimera : undefined;
+    await sendImage(sock, jid, file, caption);
+    await new Promise((r) => setTimeout(r, 350)); // pequeño delay
+  }
+}
+// --- Saludo ---
 async function enviarSaludo(sock, jid) {
   await sendImage(sock, jid, IMG_SALUDO, SALUDO);
 }
-/* ===== BOT ===== */
+// Alias por si quedó el nombre viejo en alguna parte
+const sendSaludo = enviarSaludo;
+/* ===== MAIN ===== */
 async function start() {
-  const { state, saveCreds } = await useMultiFileAuthState("./auth");
+  const { state, saveCreds } = await useMultiFileAuthState(path.join(__dirname, "auth"));
+
   const sock = makeWASocket({
     auth: state,
-    printQRInTerminal: true,
-    browser: ["BotVendedor", "Chrome", "1.0"]
+    browser: Browsers.appropriate("Chrome"),
+    printQRInTerminal: false,
   });
 
-const qrcode = require("qrcode-terminal");
-const QRCode = require("qrcode"); // <- nuevo
-
+  // QR y reconexión
 sock.ev.on('connection.update', async (update) => {
-  const { qr, connection, lastDisconnect } = update;
+  const { connection, lastDisconnect, qr } = update;
 
-  if (qr) {
-    console.log("== Escanea este QR ==");
-    // URL clickeable (más cómodo en Railway)
-    const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=' + encodeURIComponent(qr);
-    console.log('QR en imagen:', qrUrl);
+  // Mostrar QR en consola y guardar imagen (si tienes filePath definido arriba)
+ if (qr) {
+  console.log("📷 Escanea este QR:");
+  qrcode.generate(qr, { small: true });
 
-    // Guardar PNG localmente (se verá en tu máquina; en Railway es efímero)
-    try {
-      await QRCode.toFile(filePath, qr, { width: 320, margin: 1 };
-      console.log('Guardado:', filePath);
-    } catch (e) {
-      console.error('No pude guardar el PNG:', e);
-    }
+  try {
+    await QRCode.toFile(filePath, qr, { width: 320, margin: 1 });
+    console.log("🖼️ QR guardado en:", filePath);
+
+    // 👇 imprime un link de imagen del QR (sin backticks)
+  console.log(
+  "🧩 QR en imagen: " +
+  "https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=" +
+  encodeURIComponent(qr)
+);
+  } catch (e) {
+    console.error("No pude guardar PNG:", e);
   }
-
-  if (connection === 'open') {
-    console.log('✅ Conectado a WhatsApp');
-  }
+}
 
   if (connection === 'close') {
-    const code = lastDisconnect?.error?.output?.statusCode || '';
-    const reason = lastDisconnect?.error?.message || '';
-    console.log(`❌ Conexión cerrada. Código: ${code} | Motivo: ${reason}`);
+    const code = lastDisconnect?.error?.output?.statusCode || 0;
+    console.log('❌ Conexión cerrada. Código:', code);
+
+    if (code === 401) {
+      console.log('Sesión inválida. Borra la carpeta ./auth y vuelve a escanear.');
+    } else {
+      // 515 u otros → reintentar
+      setTimeout(start, 1500);
+    }
+  } else if (connection === 'open') {
+    console.log('✅ Conectado a WhatsApp');
   }
 });
+
   sock.ev.on("creds.update", saveCreds);
 
- sock.ev.on("messages.upsert", async ({ messages }) => {
+  // MENSAJES
+  sock.ev.on("messages.upsert", async (m) => {
     try {
-      const m = messages?.[0];
-      if (!m || !m.message || m.key.fromMe) return;
+      const msg = m.messages?.[0];
+      if (!msg || !msg.message ||msg.key.fromMe) return;
 
-      const jid = m.key.remoteJid;
+      const jid = msg.key.remoteJid || "";
 
-      // extraer texto
-      let texto = "";
-      if (m.message.conversation) texto = m.message.conversation;
-      else if (m.message.extendedTextMessage?.text) texto = m.message.extendedTextMessage.text;
-      else if (m.message.imageMessage?.caption) texto = m.message.imageMessage.caption;
-      else if (m.message.vidoMessage?.caption) texto = m.message.videoMessage.caption;
+      // Grupos: no conversar (solo un aviso)
+      if (jid.endsWith("@g.us")) {
+        if (!gruposSaludados.has(jid)) {
+          await sendText(
+            sock,
+            jid,
+            "👋 Hola, soy *Samantha*. Para hablar conmigo usa el *chat privado*. Aquí en el grupo no respondo."
+          );
+          gruposSaludados.add(jid);
+        }
+        return;
+      }
 
-      if (!texto || !texto.trim()) return;
+      // texto
+  const textoCrudo =
+  msg.message?.conversation ??
+  msg.message?.extendedTextMessage?.text ??
+  msg.message?.imageMessage?.caption ??
+  msg.message?.videoMessage?.caption ?? "";
 
-      const t = normalize(texto);
+const t = normalize(textoCrudo);
+const tNoSpaces = t.replace(/\s/g, "");
 
-      // Menú principal
-      if (["hola", "menu", "menú", "inicio"].includes(t)) {
-  if (shouldGreetOnce(jid)) {
-    await enviarSaludo(sock, jid);            // imagen + menú
-  } else {
-    await sendText(sock, jid, "Dime 1, 2 o 3 😊");
+      // Saludo único por número
+      if (!saludados.has(jid) && ["hola", "menu", "menú", "inicio"].includes(t)) {
+        await enviarSaludo(sock, jid);
+        saludados.add(jid);
+        return;
+      }
+
+      /* ===== Menú principal (1–4 visibles) ===== */
+
+      // 1) Ver prductos y precios
+      if (/^1(\b|[.)])$/.test(t)) {
+        await sendText(sock, jid, TEXTO_OP1);
+        await sendText(sock, jid, "Puedes escribir: 5 (Pagar) • 6 (Plan Compartido) • 7 (Plan Individual) • 8 (Volver al menú)");
+        return;
+      }
+
+      // 2) ¿Qué es ChatGPT Plus?
+      if (/^2(\b|[.)])$/.test(t)) {
+        await sendText(sock, jid, TEXTO_OP2);
+        await sendText(sock, jid, "Puedes escribir: 1 (Ver productos y costos) • 5 (Pagar) • 8 (Volver al menú)");
+        return;
+      }
+
+      //3) Ver referencias (imágenes)
+      if (/^3(\b|[.)])$/.test(t) || t.includes("referencias")) {
+        await sendReferences(sock, jid, "Estas son algunas referencias 👇");
+        await sendText(sock, jid, "¿Qué quieres hacer ahora?\n• 5 (Pagar)\n• 8 (Volver al menú)");
+        return;
+      }
+
+   // 4) Conectar con un vendedor
+if (/^4(\b|[.)])$/.test(t) || t.includes("vendedor")) {
+  await sendText(sock, jid, "En un momento te atenderá un vendedor.");
+  await avisarAdmins(sock, jid, "Quiere hablar con un vendedor");
+  return;
+}
+
+// 5) Ir a pagar (envía QR)
+if (
+  t === "5" ||
+  /^5(\b|[.)])$/.test(t) ||
+  t.replace(/\s/g, "").includes("irapagar") ||
+  t === "pagar"
+) {
+  await sendImage(sock, jid, IMG_QR, TEXTO_PAGO);
+  await avisarAdmins(sock, jid, "Fue a pagar");
+  return;
+}
+      // 6) Ver Plan Compartido
+   if (/^6(\b|[.)])$/.test(t)) {
+        await sendText(sock, jid, TEXTO_COMPARTIDO);
+        await sendText(
+          sock,
+          jid,
+          "¿Qué quieres hacer ahora?\n• 5 (Pagar)\n• 7 (Ver Plan Individual)\n• 8 (Volver al menú)"
+        );
+        return;
+      }
+
+      // 7) Ver Plan Individual
+      if (/^7(\b|[.)])$/.test(t)) {
+        await sendText(sock, jid, TEXTO_INDIVIDUAL);
+        await sendText(
+          sock,
+          jid,
+          "¿Qué quieres hacer ahora?\n• 5 (Pagar)\n• 6 (Ver Plan Compartido)\n• 8 (Vover al menú)"
+        );
+        return;
+      }
+
+     // 8) Volver al menú
+if (/^8(\b|[.)])$/.test(t) || t.includes("volver al menú")) {
+  await enviarSaludo(sock, jid);
+  return;
+}
+
+// Cerrar sesión (solo admins)
+if (
+  ADMIN_JIDS.includes(jid) &&
+  (t === "cerrar sesion" || t === "cerrar sesión" || t === "logout")
+) {
+  await sendText(sock, jid, "🔄 Cerrando sesión y borrando credenciales...");
+  try {
+    // Cierra sesión en WhatsApp
+    await sock.logout();
+
+    // Borra la carpeta ./auth para que pida QR de nuevo
+    const authPath = path.join(__dirnam, "auth");
+    if (fs.existsSync(authPath)) {
+      fs.rmSync(authPath, { recursive: true, force: true });
+    }
+
+    await sendText(sock, jid, "✅ Listo. Reinicia el bot para enlazar otro número.");
+  } catch (err) {
+    await sendText(sock, jid, "⚠️ Error al cerrar sesión: " + err.message);
   }
+
+  // Cierra el proceso
+  setTimeout(() => process.exit(0), 500);
   return;
 }
 
-     // 1 / 2 / 3
-if (/^1(\b|[.)])$/.test(t)) {
-  await sendText(sock, jid, TEXTO_OP1);
-  // Sugerencia de navegación
-  await sendText(sock, jid, "Puedes escribir: 5 (Plan Compartido) • 6 (Plan Individual) • 4 (Pagar) • 7 (Volver al menú)");
-  return;
-}
-if (/^2(\b|[.)])$/.test(t)) {
-  await sendText(sock, jid, TEXTO_OP2);
-  // Sugerencia de navegación
-  await sendText(sock, jid, "Puedes escribir: 4 (Pagar) • 7 (Volver al menú)");
-  return;
-}
-if (/^3(\b|[.)])/.test(t)) {
-      await sendText(sock, jid, "En un momento te atenderá un vendedor.");
-      await avisarAdmins(sock, jid, "Quiere hablar con un vendedor");
-      return;
-    }
-const path = require('path');
-const filePath = path.join(__dirname, 'qr-login.png');
-
-    // Subopciones (números)
-    if (/^5(\b|[.)])/.test(t)) {
-      await sendText(sock, jid, TEXTO_COMPARTIDO);
-      await sendText(
-        sock,
-        jid,
-        "¿Qué quieres hacer ahora?\n" +
-        "• Escribe *6* para ver el Plan Individual.\n" +
-        "• Escribe *ir a pagar* o *4* para continuar alpago.\n" +
-        "• Escribe *7* para volver al menú."
-      );
-      return;
-    }
-
-    if (/^6(\b|[.)])/.test(t)) {
-      await sendText(sock, jid, TEXTO_INDIVIDUAL);
-      await sendText(
-        sock,
-        jid,
-        "¿Qué quieres hacer ahora?\n" +
-        "• Escribe *5* para ver el Plan Compartido.\n" +
-        "• Escribe *ir a pagar* o *4* para continuar al pago.\n" +
-        "• Escribe *7* para volver al menú."
-      );
-      return;
-    }
-
-    // === Ir a pagar (4) ===
-    if (
-      t ==="4" ||                          // "4"
-      /^4(\b|[.)])$/.test(t) ||             // "4." o "4)"
-      t.replace(/\s/g, "") === "4" ||       // "  4  "
-      t.includes("ir a pagar") ||           // "ir a pagar"
-      t === "pagar"                         // "pagar"
-    ) {
-      await sendImage(sock, jid, IMG_QR, TEXTO_PAGO);
-      await avisarAdmins(sock, jid, "Fue a pagar");
-      return;
-    }
-
-    // === Volver al menú (7) ===
-    // Acepta: "7", "7.", "7)", "*7*", con o sin espacios
-    if (/^[\s\]*7[\s\*]*[.)]?\s*$/.test(texto || "")) {
-      await enviarSaludo(sock, jid); // Menú con imagen
-      // Si prefieres solo texto: // await sendText(sock, jid, SALUDO);
-      return;
-    }
-
-    // Fallback (si no coincide nada)
-    await enviarSaludo(sock, jid);
+      // Fallback: si nunca saludó, saluda
+      if (!saludados.has(jid)) {
+        await enviarSaludo(sock, jid);
+        saludados.add(jid);
+      }
     } catch (e) {
       console.error("upsert error:", e);
     }
-  }); // <- cierra el listener
+  });
+}
 
-} // <- cierra async function start()
-
-start(); // <- llamada final
+/* ===== INICIO ===== */
+start().catch((e) => console.error("Fallo al inicir:", e));
