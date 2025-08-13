@@ -57,7 +57,7 @@ Como en Her, vive la experiencia de tener una IA siempre lista para escucharte, 
 👤 Planes Individuales (tu asistente solo para ti):
 📅 1 mes: 139 Bs
 📅 2 meses: 269 Bs
-📅 6 meses: 799 Bs
+📅 6 meses: 599 Bs
 📅 1 año: 1579 Bs
 
 🔥 Llévate a Samantha contigo para que impulse tu productividad, potencie tu creatividad y te acompañe 24/7… como una verdadera asistente personal de película.
