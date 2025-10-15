@@ -3,6 +3,7 @@
 /* ===== IMPORTS ===== */
 const fs = require("fs");
 const path = require("path");
+const http = require("http");
 const qrcode = require("qrcode-terminal");
 const QRCode = require("qrcode");
 const {
@@ -19,7 +20,7 @@ const ADMIN_JIDS = [
   "591@s.whatsapp.net",
 ];
 
-// Rutas de imágenes
+// Rutas de imágenes (para tus mensajes)
 const IMG_SALUDO = path.join(__dirname, "data/medios/saludo.png");
 const IMG_QR     = path.join(__dirname, "data/medios/qr.jpeg");
 const IMG_REFERENCIAS = [
@@ -29,6 +30,11 @@ const IMG_REFERENCIAS = [
   path.join(__dirname, "data/refs/ref4.jpeg"),
   path.join(__dirname, "data/refs/ref5.jpeg")
 ];
+
+/* ===== QR FILES / SERVER ===== */
+const PORT = process.env.PORT || 3000;
+const FILE_QR = path.join(__dirname, "qr-login.png");
+const FILE_QR_HTML = path.join(__dirname, "qr-link.html");
 
 /* ===== 🎯 PERSISTENCIA: users.json ===== */
 const USERS_FILE = path.join(__dirname, "users.json");
@@ -124,7 +130,6 @@ const saludados = new Set();
 const gruposSaludados = new Set();
 
 /* ===== HELPERS ===== */
-const FILE_QR = path.join(__dirname, "qr-login.png");
 const normalize = (s = "") =>
   String(s).trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
@@ -156,17 +161,47 @@ async function sendReferences(sock, jid, captionPrimera = "Mira nuestras referen
 }
 async function enviarSaludo(sock, jid) { await sendImage(sock, jid, IMG_SALUDO, SALUDO_MENU); }
 
+/* ===== MINI SERVIDOR HTTP PARA VER EL QR ===== */
+const server = http.createServer((req, res) => {
+  if (req.url === "/qr" && fs.existsSync(FILE_QR)) {
+    res.writeHead(200, { "Content-Type": "image/png" });
+    fs.createReadStream(FILE_QR).pipe(res);
+    return;
+  }
+  if (req.url === "/qr-link" && fs.existsSync(FILE_QR_HTML)) {
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    fs.createReadStream(FILE_QR_HTML).pipe(res);
+    return;
+  }
+  // Página simple con enlaces
+  res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+  res.end(`<!doctype html><meta charset="utf-8">
+  <title>IAmax • QR</title>
+  <style>body{font-family:system-ui;margin:2rem}a{display:inline-block;margin:.5rem 0}</style>
+  <h1>IAmax bot</h1>
+  <p>Rutas útiles:</p>
+  <ul>
+    <li><a href="/qr" target="_blank">/qr</a> — PNG del QR (si existe)</li>
+    <li><a href="/qr-link" target="_blank">/qr-link</a> — Página con el QR embebido (si existe)</li>
+  </ul>`);
+});
+server.listen(PORT, () => {
+  console.log(`HTTP keep-alive up on port ${PORT}`);
+  console.log(`QR PNG:   http://localhost:${PORT}/qr`);
+  console.log(`QR LINK:  http://localhost:${PORT}/qr-link`);
+});
+
 /* ===== MAIN ===== */
 async function start() {
   const { state, saveCreds } = await useMultiFileAuthState(path.join(__dirname, "auth"));
 
   // Asegurar compatibilidad con la versión actual de WhatsApp Web
-  let version = /** @type {[number, number, number]} */ ([2, 2410, 1]); // fallback seguro
+  let version = /** @type {[number, number, number]} */ ([2, 2410, 1]); // fallback
   try {
     const v = await fetchLatestBaileysVersion();
     if (v?.version && Array.isArray(v.version)) version = v.version;
     console.log("WA Web version:", version, "(latest:", v?.isLatest, ")");
-  } catch (e) {
+  } catch {
     console.log("No se pudo obtener versión WA Web, uso fallback:", version);
   }
 
@@ -176,18 +211,41 @@ async function start() {
     browser: Browsers.appropriate("Chrome"),
   });
 
+  // === QR & conexión ===
   sock.ev.on("connection.update", async ({ connection, lastDisconnect, qr }) => {
     if (qr) {
-      // Muestra QR en terminal y guarda PNG
       try {
+        // 1) QR en terminal (ASCII)
         qrcode.generate(qr, { small: true });
+
+        // 2) Guardar PNG
         await QRCode.toFile(FILE_QR, qr, { width: 320, margin: 1 });
-        console.log("QR guardado en:", FILE_QR);
-      } catch {}
+        console.log("QR PNG guardado en:", FILE_QR, "→ /qr");
+
+        // 3) Generar Data URL + HTML
+        const dataUrl = await QRCode.toDataURL(qr);
+        const html = `<!doctype html><meta charset="utf-8"><title>QR WhatsApp</title>
+<style>body{display:grid;place-items:center;height:100vh;font-family:sans-serif}</style>
+<h2>Escanea este QR con WhatsApp</h2>
+<img src="${dataUrl}" alt="WhatsApp QR" style="max-width:320px;width:100%;height:auto">
+<p style="opacity:.7">Si no carga, copia este enlace en tu navegador:</p>
+<textarea style="width:90%;height:100px">${dataUrl}</textarea>`;
+        fs.writeFileSync(FILE_QR_HTML, html);
+        console.log("QR HTML listo → /qr-link");
+        console.log("DataURL (cópialo en el navegador si quieres ver el QR directamente):");
+        console.log(dataUrl);
+      } catch (e) {
+        console.error("Error al manejar QR:", e);
+      }
     }
 
     if (connection === "open") {
       console.log("✅ Conectado a WhatsApp");
+      // Limpia archivos de QR para no confundir
+      try {
+        if (fs.existsSync(FILE_QR)) fs.unlinkSync(FILE_QR);
+        if (fs.existsSync(FILE_QR_HTML)) fs.unlinkSync(FILE_QR_HTML);
+      } catch {}
     } else if (connection === "close") {
       const code = lastDisconnect?.error?.output?.statusCode || 0;
       console.log("❌ Conexión cerrada:", code);
@@ -197,6 +255,7 @@ async function start() {
 
   sock.ev.on("creds.update", saveCreds);
 
+  // === MENSAJES ===
   sock.ev.on("messages.upsert", async (m) => {
     try {
       const msg = m.messages?.[0];
