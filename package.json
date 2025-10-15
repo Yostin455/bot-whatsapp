@@ -1,10 +1,10 @@
 {
-  "name": "iamax-bot",
+  "name": "bot-ws",
   "version": "1.0.0",
-  "main": "bot.js",
+  "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node bot.js"
+    "start": "node index.js"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.20",
@@ -12,7 +12,6 @@
     "qrcode-terminal": "^0.12.0"
   },
   "engines": {
-    "node": "18.x"
+    "node": "22.x"
   }
 }
-
